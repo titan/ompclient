@@ -16,19 +16,19 @@ class LauncherPage extends StatefulWidget {
 }
 
 class _LauncherPageState extends State<LauncherPage> {
-
   bool _logined = false;
 
   @override
   void initState() {
     super.initState();
-    config.store.onChange.listen((state) {
-      if (state.getState(sessionkey).session != null) {
-        setState((){
+    widget.store.onChange.listen((state) {
+      if (state.getState(sessionkey).session != null &&
+          state.getState(sessionkey).session.access_token != null) {
+        setState(() {
           _logined = true;
         });
       } else {
-        setState((){
+        setState(() {
           _logined = false;
         });
       }
@@ -43,9 +43,15 @@ class _LauncherPageState extends State<LauncherPage> {
   @override
   Widget build(BuildContext context) {
     if (_logined) {
-      return new HomePage(title: '主页');
+      return new HomePage(
+        title: '主页',
+        store: widget.store,
+      );
     } else {
-      return new LoginPage(title: '用户登录', store: config.store);
+      return new LoginPage(
+        title: '用户登录',
+        store: widget.store,
+      );
     }
   }
 }

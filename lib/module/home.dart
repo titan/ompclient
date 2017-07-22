@@ -11,6 +11,7 @@ class HomeMenu {
 
 class HomePage extends StatelessWidget {
   final String title;
+  final Store store;
   final List<HomeMenu> _menus = <HomeMenu>[
     new HomeMenu(
         title: '设备告警',
@@ -33,7 +34,7 @@ class HomePage extends StatelessWidget {
         emoji: '\u{1F4CA}',
         route: "/reports"),
   ];
-  HomePage({Key key, this.title}) : super(key: key);
+  HomePage({Key key, this.title, this.store}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {

@@ -1,23 +1,29 @@
 import 'dart:async';
-import 'package:redux/redux.dart';
-import 'package:ompclient/store/defination.dart';
 import 'package:ompclient/api/session.dart' as api;
+import 'package:ompclient/model/session.dart';
+import 'package:ompclient/store/defination.dart';
+import 'package:redux/redux.dart';
 import 'package:redux_epics/redux_epics.dart';
 
 const String sessionkey = 'session';
 
 class SessionState {
-  String session;
-  bool loading;
+  Session session;
+  bool loading = false;
   Exception error;
 }
 
 class SessionActionPayload {
+  Session session;
   String account;
   String password;
-  String session;
   Exception error;
-  SessionActionPayload({this.account, this.password, this.session, this.error});
+  SessionActionPayload({
+    this.account,
+    this.password,
+    this.session,
+    this.error,
+  });
 }
 
 class SessionAction implements Action {
@@ -25,7 +31,12 @@ class SessionAction implements Action {
   SessionActionPayload payload;
   bool error;
   String meta;
-  SessionAction({this.type, this.payload, this.error : false, this.meta = sessionkey});
+  SessionAction({
+    this.type,
+    this.payload,
+    this.error = false,
+    this.meta = sessionkey,
+  });
 }
 
 class SessionReducer extends Reducer<SessionState, SessionAction> {
@@ -37,10 +48,12 @@ class SessionReducer extends Reducer<SessionState, SessionAction> {
       case 'SIGNIN_SUCCESS':
         state.loading = false;
         state.session = action.payload.session;
+        state.session.account = action.payload.account;
         return state;
       case 'SIGNIN_FAILED':
         state.loading = false;
         state.error = action.payload.error;
+        state.session = null;
         return state;
       default:
         return state;
@@ -50,24 +63,55 @@ class SessionReducer extends Reducer<SessionState, SessionAction> {
 
 class SessionEpic extends Epic<AppState, Action> {
   @override
-  Stream<Action> map(Stream<Action> actions, EpicStore<AppState, Action> store) {
+  Stream<Action> map(
+      Stream<Action> actions, EpicStore<AppState, Action> store) {
     return actions
-      .where((action) => action is SessionAction && (action as SessionAction).type == 'SIGNIN_REQUEST')
-      .map((action) => (action as SessionAction).payload)
-      .asyncMap((payload) =>
-          api.signIn(payload.account, payload.password)
-          .then((String session) => new SessionAction(type: 'SIGNIN_SUCCESS', payload: new SessionActionPayload(session: session), error: false))
-          .catchError((error) => new SessionAction(type: 'SIGNIN_FAILED', payload: new SessionActionPayload(error: error), error: true))
-      );
+        .where((action) =>
+            action is SessionAction && action.type == 'SIGNIN_REQUEST')
+        .map((action) => (action as SessionAction).payload)
+        .asyncMap((payload) => api
+                .signIn(payload.account, payload.password)
+                .then((Session session) => new SessionAction(
+                      type: 'SIGNIN_SUCCESS',
+                      payload: new SessionActionPayload(
+                        session: session,
+                        account: payload.account,
+                      ),
+                      error: false,
+                    ))
+                .catchError((error) {
+              print(error);
+              if (error is Error) {
+                print(error.stackTrace);
+              }
+              return new SessionAction(
+                type: 'SIGNIN_FAILED',
+                payload: new SessionActionPayload(
+                  error: (error is Exception)
+                      ? error
+                      : new Exception("${error}${error.stackTrace}"),
+                ),
+                error: true,
+              );
+            }));
   }
 }
 
 void signIn(Store store, String account, String password) {
   store.dispatch(new SessionAction(
-        type: 'SIGNIN_REQUEST',
-        payload: new SessionActionPayload(
-          account: account,
-          password: password,
-          ),
-        ));
+    type: 'SIGNIN_REQUEST',
+    payload: new SessionActionPayload(
+      account: account,
+      password: password,
+    ),
+  ));
+}
+
+void reportInvalidToken(Store store, Exception error) {
+  store.dispatch(new SessionAction(
+    type: 'SIGNIN_FAILED',
+    payload: new SessionActionPayload(error: error),
+    error: true,
+    meta: sessionkey,
+  ));
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:redux/redux.dart';
+import 'package:ompclient/api/defination.dart';
 import 'package:ompclient/model/warning.dart';
 import 'package:ompclient/store/warning.dart';
 
@@ -85,30 +86,72 @@ class WarningsPage extends StatefulWidget {
 
 class _WarningsPageState extends State<WarningsPage>
     with SingleTickerProviderStateMixin {
+  bool _reported = false;
+  final ScrollController _scrollController = new ScrollController();
   TabController _controller;
   _Page _selectedPage = _pages[0];
-  Map<String, WarningState> _warning_states;
+  Map<String, WarningState> _warningStates;
 
   void _handleTabSelection() {
     setState(() {
       _selectedPage = _pages[_controller.index];
-      WarningState _state = _warning_states[_selectedPage.level];
+      WarningState _state = _warningStates[_selectedPage.level];
       if (!_state.nomore && _state.rows.length == 0) {
-        fetchWarnings(widget.store, _selectedPage.level, _state.page);
+        fetchWarnings(
+          widget.store,
+          _selectedPage.level,
+          _state.page,
+        );
       }
     });
+  }
+
+  bool _handleScrollNotification(ScrollNotification notification, Store store,
+      WarningState state, String level) {
+    if (notification.depth == 0 && notification is OverscrollNotification) {
+      if (notification.overscroll > 0) {
+        // got to the end of scrollable
+        if (!state.nomore) {
+          fetchWarnings(widget.store, level, state.page + 1);
+        }
+      }
+    }
+    return false;
   }
 
   @override
   void initState() {
     super.initState();
-    _controller = new TabController(vsync: this, length: _pages.length);
+    _controller = new TabController(
+      vsync: this,
+      length: _pages.length,
+    );
     _controller.addListener(_handleTabSelection);
-    _warning_states = widget.store.state.getState(warningkey);
-    WarningState _state = _warning_states[_selectedPage.level];
+    _warningStates = widget.store.state.getState(warningkey);
+    WarningState _state = _warningStates[_selectedPage.level];
     if (!_state.nomore && _state.rows.length == 0) {
-      fetchWarnings(widget.store, _selectedPage.level, _state.page);
+      fetchWarnings(
+        widget.store,
+        _selectedPage.level,
+        _state.page,
+      );
     }
+    widget.store.onChange.listen((state) {
+      if (_state.error != null &&
+          _state.error is TokenException &&
+          !_reported) {
+        _reported = true; // make sure just report once
+        reportInvalidToken(widget.store, _state.error);
+        if (context != null) {
+          Navigator.of(context).popUntil((route) {
+            if (route is MaterialPageRoute && route.settings.name == "/") {
+              return true;
+            }
+            return false;
+          });
+        }
+      }
+    });
   }
 
   @override
@@ -119,6 +162,40 @@ class _WarningsPageState extends State<WarningsPage>
 
   @override
   Widget build(BuildContext context) {
+    WarningState _state = _warningStates[_selectedPage.level];
+    final Map<String, List<Widget>> items = new Map<String, List<Widget>>();
+    for (_Page page in _pages) {
+      String level = page.level;
+      WarningState _state = _warningStates[level];
+      List<Widget> list = <Widget>[];
+      items[level] = list;
+      if (_state.error == null) {
+        list.addAll(_warningStates[level].rows.map((Warning warning) {
+          return new Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8.0),
+            child: new WarningItem(
+              warning: warning,
+              color: page.color,
+              onTap: () {
+                selectWarning(
+                  widget.store,
+                  warning,
+                );
+                Navigator.pushNamed(
+                  context,
+                  '/warning',
+                );
+              },
+            ),
+          );
+        }).toList());
+        if (_state.loading) {
+          list.add(new Center(
+            child: new CircularProgressIndicator(),
+          ));
+        }
+      }
+    }
     return new Scaffold(
       appBar: new AppBar(
         title: new Text(widget.title),
@@ -130,22 +207,23 @@ class _WarningsPageState extends State<WarningsPage>
       body: new TabBarView(
         controller: _controller,
         children: _pages.map((_Page page) {
-          return new ListView(
-            padding:
-                const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
-            children: _warning_states[page.level].rows.map((Warning warning) {
-              return new Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8.0),
-                child: new WarningItem(
-                    warning: warning,
-                    color: page.color,
-                    onTap: () {
-                      selectWarning(widget.store, warning);
-                      Navigator.pushNamed(context, '/warning');
-                    }),
-              );
-            }).toList(),
-          );
+          return _warningStates[page.level].error != null
+              ? new Center(
+                  child: new Text(_state.error.toString()),
+                )
+              : new NotificationListener<ScrollNotification>(
+                  onNotification: (ScrollNotification notification) {
+                    return _handleScrollNotification(
+                        notification, widget.store, _state, page.level);
+                  },
+                  child: new ListView(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 8.0,
+                      horizontal: 16.0,
+                    ),
+                    children: items[page.level],
+                  ),
+                );
         }).toList(),
       ),
     );

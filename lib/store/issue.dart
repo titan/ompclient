@@ -1,9 +1,10 @@
 import 'dart:async';
-import 'package:redux/redux.dart';
-import 'package:ompclient/store/defination.dart';
 import 'package:ompclient/api/defination.dart';
 import 'package:ompclient/api/issue.dart' as api;
 import 'package:ompclient/model/issue.dart';
+import 'package:ompclient/store/defination.dart';
+import 'package:ompclient/store/session.dart';
+import 'package:redux/redux.dart';
 import 'package:redux_epics/redux_epics.dart';
 
 const String issuekey = 'issue';
@@ -25,8 +26,12 @@ class IssueActionPayload {
   final Exception error;
   final CollectionResponse<Issue> response;
   final Issue selected;
-  IssueActionPayload(
-      {this.page = 1, this.error, this.response, this.selected});
+  IssueActionPayload({
+    this.page = 1,
+    this.error,
+    this.response,
+    this.selected,
+  });
 }
 
 class IssueAction implements Action {
@@ -34,7 +39,12 @@ class IssueAction implements Action {
   IssueActionPayload payload;
   bool error;
   String meta;
-  IssueAction({this.type, this.payload, this.error, this.meta = issuekey});
+  IssueAction({
+    this.type,
+    this.payload,
+    this.error,
+    this.meta = issuekey,
+  });
 }
 
 class IssueReducer extends Reducer<IssueState, IssueAction> {
@@ -76,16 +86,24 @@ class IssueEpic extends Epic<AppState, Action> {
             (action as IssueAction).type == 'ISSUES_REQUEST')
         .map((action) => (action as IssueAction).payload)
         .asyncMap((payload) => api
-                .fetchIssues(page: payload.page)
+                .fetchIssues(store.state.getState(sessionkey).session,
+                    page: payload.page)
                 .then((CollectionResponse<Issue> response) => new IssueAction(
                     type: 'ISSUES_SUCCESS',
                     payload: new IssueActionPayload(response: response),
                     error: false))
                 .catchError((error) {
-              print(error.stackTrace);
+              print(error);
+              if (error is Error) {
+                print(error.stackTrace);
+              }
               return new IssueAction(
                   type: 'ISSUES_FAILED',
-                  payload: new IssueActionPayload(error: error),
+                  payload: new IssueActionPayload(
+                    error: (error is Exception)
+                        ? error
+                        : new Exception("${error}${error.stackTrace}"),
+                  ),
                   error: true);
             }));
   }

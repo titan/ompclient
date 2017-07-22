@@ -6,8 +6,12 @@ class KeyValueItem extends StatelessWidget {
   final String title;
   final String value;
   final double height;
-  KeyValueItem(
-      {Key key, this.title, this.value, this.height = kKeyValueItemHeight})
+  KeyValueItem({
+    Key key,
+    this.title,
+    this.value,
+    this.height = kKeyValueItemHeight,
+  })
       : super(key: key);
   @override
   Widget build(BuildContext context) {
@@ -31,11 +35,10 @@ class KeyValueItem extends StatelessWidget {
           children: <Widget>[
             new Text(title),
             new Expanded(
-              child:
-            new Text(
-              value,
-              textAlign: TextAlign.right,
-            ),
+              child: new Text(
+                value,
+                textAlign: TextAlign.right,
+              ),
             ),
           ],
         ),

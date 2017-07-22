@@ -15,7 +15,7 @@ class Issue {
   DateTime create_time;
   DateTime end_time;
   String suggest;
-  String evaluate;
+  int evaluate;
   int property;
   String cus_name;
   String cus_phone;

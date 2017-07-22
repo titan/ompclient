@@ -6,14 +6,18 @@ class LoginPage extends StatefulWidget {
   final String title;
   final Store store;
 
-  LoginPage({Key key, this.title, this.store}) : super(key: key);
+  LoginPage({
+    Key key,
+    this.title,
+    this.store,
+  })
+      : super(key: key);
 
   @override
   _LoginPageState createState() => new _LoginPageState();
 }
 
 class _LoginPageState extends State<LoginPage> {
-
   final GlobalKey<ScaffoldState> _scaffoldKey = new GlobalKey<ScaffoldState>();
 
   String _account, _passwd;
@@ -21,40 +25,40 @@ class _LoginPageState extends State<LoginPage> {
   bool _formWasEdited = false;
 
   GlobalKey<FormState> _formKey = new GlobalKey<FormState>();
-  GlobalKey<FormFieldState<InputValue>> _passwordFieldKey = new GlobalKey<FormFieldState<InputValue>>();
+  GlobalKey<FormFieldState<String>> _passwordFieldKey =
+      new GlobalKey<FormFieldState<String>>();
 
   void showInSnackBar(String value) {
-    _scaffoldKey.currentState.showSnackBar(new SnackBar(
-      content: new Text(value)
-    ));
+    _scaffoldKey.currentState
+        .showSnackBar(new SnackBar(content: new Text(value)));
   }
 
   void _handleSubmitted(BuildContext context) {
     FormState form = _formKey.currentState;
     if (!form.validate()) {
-      _autovalidate = true;  // Start validating on every change.
-      showInSnackBar('Please fix the errors in red before submitting.');
+      _autovalidate = true; // Start validating on every change.
+      showInSnackBar('请在登录前修正红色的错误');
     } else {
       form.save();
-      showInSnackBar('account $_account, password $_passwd');
-      signIn(config.store, _account, _passwd);
+      signIn(
+        widget.store,
+        _account,
+        _passwd,
+      );
     }
   }
 
-  String _validateAccount(InputValue value) {
+  String _validateAccount(String value) {
     _formWasEdited = true;
-    if (value.text.isEmpty)
-      return '请填写帐号';
+    if (value.isEmpty) return '请填写帐号';
     RegExp nameExp = new RegExp(r'^[A-za-z_0-9]+$');
-    if (!nameExp.hasMatch(value.text))
-      return '请仅填写英文字母+数字';
+    if (!nameExp.hasMatch(value)) return '请仅填写英文字母+数字';
     return null;
   }
 
-
-  String _validatePassword(InputValue value) {
+  String _validatePassword(String value) {
     _formWasEdited = true;
-    FormFieldState<InputValue> passwordField = _passwordFieldKey.currentState;
+    FormFieldState<String> passwordField = _passwordFieldKey.currentState;
     if (passwordField.value == null || passwordField.value.text.isEmpty)
       return '请输入密码';
     return null;
@@ -63,43 +67,71 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     return new Scaffold(
-        key: _scaffoldKey,
-        appBar: new AppBar(
-          title: new Text(config.title),
-        ),
-        body: new Form(
-          key: _formKey,
-          autovalidate: _autovalidate,
-          child: new ListView(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            children: <Widget>[
-              new TextField(
-                icon: new Icon(Icons.person),
+      key: _scaffoldKey,
+      appBar: new AppBar(
+        title: new Text(widget.title),
+      ),
+      body: new Form(
+        key: _formKey,
+        autovalidate: _autovalidate,
+        child: new ListView(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          children: <Widget>[
+            new Image.asset(
+              'assets/logo.png',
+              scale: 0.2,
+              width: 150.0,
+              height: 150.0,
+            ),
+            new TextFormField(
+              decoration: const InputDecoration(
+                icon: const Icon(Icons.person),
                 hintText: '请输入帐号',
                 labelText: '帐号',
-                onSaved: (InputValue value) { _account = value.text; },
-                validator: _validateAccount,
               ),
-              new TextField(
-                key: _passwordFieldKey,
-                icon: new Icon(Icons.vpn_key),
+              onSaved: (String value) {
+                _account = value;
+              },
+              validator: _validateAccount,
+            ),
+            new TextFormField(
+              key: _passwordFieldKey,
+              decoration: const InputDecoration(
+                icon: const Icon(Icons.vpn_key),
                 hintText: '请输入密码',
                 labelText: '密码',
-                obscureText: true,
-                onSaved: (InputValue value) { _passwd = value.text; },
-                validator: _validatePassword,
               ),
-              new Container(
-                padding: const EdgeInsets.all(20.0),
-                alignment: const FractionalOffset(0.5, 0.5),
-                child: new RaisedButton(
-                  child: new Text('登录'),
-                  onPressed: () { _handleSubmitted(context); },
+              obscureText: true,
+              onSaved: (String value) {
+                _passwd = value;
+              },
+            ),
+            new Container(
+              padding: const EdgeInsets.symmetric(vertical: 10.0),
+              child: new FlatButton(
+                color: Colors.blue[500],
+                textColor: Colors.white,
+                child: new Text(
+                  '登录',
+                  style: new TextStyle(fontSize: 18.0),
                 ),
+                onPressed: () {
+                  _handleSubmitted(context);
+                },
               ),
-            ],
-          ),
+            ),
+            widget.store.state.getState(sessionkey).loading
+                ? new Center(
+                    child: new CircularProgressIndicator(),
+                  )
+                : null,
+            widget.store.state.getState(sessionkey).error != null
+                ? new Text(
+                    widget.store.state.getState(sessionkey).error.toString())
+                : null,
+          ].where((x) => x != null).toList(),
         ),
-      );
+      ),
+    );
   }
 }

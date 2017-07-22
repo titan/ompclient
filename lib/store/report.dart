@@ -1,9 +1,10 @@
 import 'dart:async';
-import 'package:redux/redux.dart';
-import 'package:ompclient/store/defination.dart';
 import 'package:ompclient/api/defination.dart';
 import 'package:ompclient/api/report.dart' as api;
 import 'package:ompclient/model/report.dart';
+import 'package:ompclient/store/defination.dart';
+import 'package:ompclient/store/session.dart';
+import 'package:redux/redux.dart';
 import 'package:redux_epics/redux_epics.dart';
 
 const String reportkey = 'report';
@@ -25,8 +26,12 @@ class ReportActionPayload {
   final Exception error;
   final CollectionResponse<Report> response;
   final Report selected;
-  ReportActionPayload(
-      {this.page = 1, this.error, this.response, this.selected});
+  ReportActionPayload({
+    this.page = 1,
+    this.error,
+    this.response,
+    this.selected,
+  });
 }
 
 class ReportAction implements Action {
@@ -34,7 +39,12 @@ class ReportAction implements Action {
   ReportActionPayload payload;
   bool error;
   String meta;
-  ReportAction({this.type, this.payload, this.error, this.meta = reportkey});
+  ReportAction({
+    this.type,
+    this.payload,
+    this.error,
+    this.meta = reportkey,
+  });
 }
 
 class ReportReducer extends Reducer<ReportState, ReportAction> {
@@ -76,16 +86,24 @@ class ReportEpic extends Epic<AppState, Action> {
             (action as ReportAction).type == 'REPORTS_REQUEST')
         .map((action) => (action as ReportAction).payload)
         .asyncMap((payload) => api
-                .fetchReports(page: payload.page)
+                .fetchReports(store.state.getState(sessionkey).session,
+                    page: payload.page)
                 .then((CollectionResponse<Report> response) => new ReportAction(
                     type: 'REPORTS_SUCCESS',
                     payload: new ReportActionPayload(response: response),
                     error: false))
                 .catchError((error) {
               print(error.stackTrace);
+              if (error is Error) {
+                print(error.stackTrace);
+              }
               return new ReportAction(
                   type: 'REPORTS_FAILED',
-                  payload: new ReportActionPayload(error: error),
+                  payload: new ReportActionPayload(
+                    error: (error is Exception)
+                        ? error
+                        : new Exception("${error}${error.stackTrace}"),
+                  ),
                   error: true);
             }));
   }

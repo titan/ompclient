@@ -9,7 +9,10 @@ const double kIssueItemHeight = 48.0;
 class Pair<F, S> {
   final F first;
   final S second;
-  Pair(this.first, this.second);
+  Pair(
+    this.first,
+    this.second,
+  );
 }
 
 class PairItem extends StatelessWidget {
@@ -18,11 +21,15 @@ class PairItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return new Card(
-      child: new ListView(
-        shrinkWrap: true,
-        children: pairs.map((x) {
-          return new KeyValueItem(title: x.first, value: x.second, height: 24.0);
-        }).toList(),
+      child: new Column(
+        children: pairs.map(
+          (x) {
+            return new KeyValueItem(
+              title: x.first,
+              value: x.second,
+            );
+          },
+        ).toList(),
       ),
     );
   }
@@ -33,7 +40,12 @@ class TabMenu {
   final String emoji;
   Color color;
   Color selectedColor;
-  TabMenu({this.title, this.emoji, this.color, this.selectedColor});
+  TabMenu({
+    this.title,
+    this.emoji,
+    this.color,
+    this.selectedColor,
+  });
 }
 
 class ComponentPage extends StatefulWidget {
@@ -127,7 +139,8 @@ class _ComponentPageState extends State<ComponentPage> {
   }
 
   Widget _buildDetailView(ComponentDetail detail, String key) {
-    ComponentDetailItem item = detail.detail.firstWhere((x) => x.Dkey == key);
+    ComponentDetailItem item =
+        detail.detail.firstWhere((x) => x.Dkey == key, orElse: () => null);
     List<List<Pair<String, String>>> pairgroups =
         <List<Pair<String, String>>>[];
     if (item != null && item.DetailList.length > 0) {
@@ -193,7 +206,9 @@ class _ComponentPageState extends State<ComponentPage> {
         title: new Text(widget.title),
       ),
       body: _detail == null
-          ? new CircularProgressIndicator()
+          ? new Center(
+              child: new CircularProgressIndicator(),
+            )
           : new Column(
               children: <Widget>[
                 new Expanded(
@@ -214,10 +229,13 @@ class _ComponentPageState extends State<ComponentPage> {
                             child: new Column(
                               crossAxisAlignment: CrossAxisAlignment.center,
                               children: <Widget>[
-                                new Text(menu.emoji,
-                                    style: new TextStyle(
-                                        fontFamily: 'EmojiSymbols',
-                                        fontSize: 20.0)),
+                                new Text(
+                                  menu.emoji,
+                                  style: new TextStyle(
+                                    fontFamily: 'EmojiSymbols',
+                                    fontSize: 20.0,
+                                  ),
+                                ),
                                 new Text(menu.title),
                               ],
                               mainAxisAlignment: MainAxisAlignment.center,
@@ -225,9 +243,10 @@ class _ComponentPageState extends State<ComponentPage> {
                           ),
                         ),
                         decoration: new BoxDecoration(
-                            color: _selectedMenu.title == menu.title
-                                ? menu.selectedColor
-                                : menu.color),
+                          color: _selectedMenu.title == menu.title
+                              ? menu.selectedColor
+                              : menu.color,
+                        ),
                       );
                     }).toList(),
                   ),
